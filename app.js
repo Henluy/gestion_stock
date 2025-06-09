@@ -22,6 +22,10 @@ class StockManager {
         this.updateAlerts();
         this.setupPWA();
         this.setupImportHandler();
+        
+        // Setup offline functionality
+        this.setupAutoSave();
+        this.loadOfflineData();
     }
 
     // Data Management
@@ -1286,11 +1290,24 @@ class StockManager {
             navigator.serviceWorker.register('./sw.js')
                 .then(registration => {
                     console.log('SW registered:', registration);
+                    
+                    // Listen for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                this.showToast('🔄 Nuova versione disponibile. Ricarica la pagina.', 'info');
+                            }
+                        });
+                    });
                 })
                 .catch(error => {
                     console.log('SW registration failed:', error);
                 });
         }
+        
+        // Monitor online/offline status
+        this.setupOfflineDetection();
 
         // Install prompt
         this.deferredPrompt = null;
@@ -1544,6 +1561,118 @@ class StockManager {
             if (e.target === modal) {
                 modal.remove();
             }
+        });
+    }
+
+    // Setup offline detection and handling
+    setupOfflineDetection() {
+        // Initial status
+        this.updateOnlineStatus();
+        
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            this.updateOnlineStatus();
+            this.showToast('🌐 Connessione ripristinata', 'success');
+            this.syncOfflineData();
+        });
+        
+        window.addEventListener('offline', () => {
+            this.updateOnlineStatus();
+            this.showToast('📱 Modalità offline attiva', 'info');
+        });
+    }
+    
+    updateOnlineStatus() {
+        const isOnline = navigator.onLine;
+        document.body.classList.toggle('offline', !isOnline);
+        
+        // Update UI to show offline status
+        const offlineIndicator = document.getElementById('offline-indicator');
+        if (!offlineIndicator) {
+            const indicator = document.createElement('div');
+            indicator.id = 'offline-indicator';
+            indicator.className = 'offline-indicator';
+            indicator.innerHTML = '📱 Offline';
+            document.body.appendChild(indicator);
+        }
+        
+        document.getElementById('offline-indicator').style.display = isOnline ? 'none' : 'block';
+    }
+    
+    syncOfflineData() {
+        // Sync any pending offline changes when back online
+        console.log('Syncing offline data...');
+        // This could be expanded to sync with a server if needed
+        this.saveDataOffline();
+    }
+    
+    // Enhanced data persistence for offline use
+    saveDataOffline() {
+        try {
+            // Save all data to localStorage with timestamp
+            const offlineData = {
+                products: this.products,
+                categories: this.categories,
+                timestamp: Date.now(),
+                version: '1.0.0'
+            };
+            
+            localStorage.setItem('stockApp_offlineData', JSON.stringify(offlineData));
+            localStorage.setItem('stockApp_lastSave', Date.now().toString());
+            
+            console.log('Data saved for offline use');
+        } catch (error) {
+            console.error('Failed to save offline data:', error);
+            this.showToast('❌ Errore nel salvataggio offline', 'error');
+        }
+    }
+    
+    loadOfflineData() {
+        try {
+            const offlineData = localStorage.getItem('stockApp_offlineData');
+            if (offlineData) {
+                const data = JSON.parse(offlineData);
+                
+                // Verify data integrity
+                if (data.products && data.categories && data.timestamp) {
+                    this.products = data.products;
+                    this.categories = data.categories;
+                    
+                    console.log('Offline data loaded successfully');
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load offline data:', error);
+        }
+        
+        return false;
+    }
+    
+    // Setup automatic saving for offline use
+    setupAutoSave() {
+        // Save data automatically when products or categories change
+        const originalSaveProducts = this.saveProducts.bind(this);
+        const originalSaveCategories = this.saveCategories.bind(this);
+        
+        this.saveProducts = () => {
+            originalSaveProducts();
+            this.saveDataOffline();
+        };
+        
+        this.saveCategories = () => {
+            originalSaveCategories();
+            this.saveDataOffline();
+        };
+        
+        // Save data periodically (every 30 seconds)
+        setInterval(() => {
+            this.saveDataOffline();
+        }, 30000);
+        
+        // Save data before page unload
+        window.addEventListener('beforeunload', () => {
+            this.saveDataOffline();
         });
     }
 
