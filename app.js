@@ -1296,69 +1296,255 @@ class StockManager {
         this.deferredPrompt = null;
         const installPrompt = document.getElementById('installPrompt');
         const installBtn = document.getElementById('installBtn');
+        
+        // Check if app is already installed
+        this.checkIfInstalled();
+        
+        // Show install button based on platform capabilities
+        this.updateInstallButtonVisibility();
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this.deferredPrompt = e;
-            installPrompt.classList.remove('hidden');
+            this.updateInstallButtonVisibility();
         });
 
         installBtn.addEventListener('click', async () => {
-            if (this.deferredPrompt) {
-                this.deferredPrompt.prompt();
-                const { outcome } = await this.deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    installPrompt.classList.add('hidden');
-                }
-                this.deferredPrompt = null;
-            }
+            this.triggerInstall();
         });
 
         window.addEventListener('appinstalled', () => {
             installPrompt.classList.add('hidden');
             this.showToast('🎉 App installata con successo!', 'success');
+            this.updateInstallButtonVisibility();
         });
+        
+        // Listen for changes in display mode
+        window.matchMedia('(display-mode: standalone)').addEventListener('change', () => {
+            this.updateInstallButtonVisibility();
+        });
+    }
+    
+    checkIfInstalled() {
+        // Check if running in standalone mode (installed)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                           window.navigator.standalone === true;
+        
+        if (isStandalone) {
+            const installPrompt = document.getElementById('installPrompt');
+            installPrompt.classList.add('hidden');
+        }
+    }
+    
+    updateInstallButtonVisibility() {
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+        
+        // Check if app is already installed
+        const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone === true;
+        
+        if (isInstalled) {
+            installPrompt.classList.add('hidden');
+            return;
+        }
+        
+        // Show install button if:
+        // 1. We have a deferred prompt (Chrome/Edge)
+        // 2. We're on a mobile device that supports PWA installation
+        // 3. We're on Safari iOS
+        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+        
+        // Show button if we have deferred prompt OR if we're on a supported mobile platform
+        if (this.deferredPrompt || (isMobile && (isChrome || (isIOS && isSafari)))) {
+            installPrompt.classList.remove('hidden');
+            
+            // Update button text based on platform
+            if (isIOS && isSafari) {
+                installBtn.textContent = '📱 Aggiungi alla Home';
+                installBtn.title = 'Aggiungi alla schermata Home';
+            } else {
+                installBtn.textContent = '📱 Installa App';
+                installBtn.title = 'Installa l\'applicazione';
+            }
+        } else {
+            installPrompt.classList.add('hidden');
+        }
     }
 
     // Manual install trigger
-    triggerInstall() {
+    async triggerInstall() {
+        // Check if app is already installed
+        const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone === true;
+        
+        if (isInstalled) {
+            this.showToast('✅ App già installata!', 'success');
+            return;
+        }
+        
         if (this.deferredPrompt) {
-            // Use the stored prompt
-            this.deferredPrompt.prompt();
-            this.deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') {
+            try {
+                // Use the stored prompt for Chrome/Edge
+                await this.deferredPrompt.prompt();
+                const { outcome } = await this.deferredPrompt.userChoice;
+                
+                if (outcome === 'accepted') {
                     this.showToast('🎉 App installata con successo!', 'success');
+                    const installPrompt = document.getElementById('installPrompt');
+                    installPrompt.classList.add('hidden');
                 } else {
                     this.showToast('ℹ️ Installazione annullata', 'info');
                 }
+                
                 this.deferredPrompt = null;
-            });
-        } else {
-            // Check if app is already installed
-            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-                this.showToast('✅ App già installata!', 'success');
-            } else {
-                // Show manual installation instructions
+                this.updateInstallButtonVisibility();
+            } catch (error) {
+                console.error('Errore durante l\'installazione:', error);
                 this.showInstallInstructions();
             }
+        } else {
+            // For platforms without beforeinstallprompt (like iOS Safari)
+            this.showInstallInstructions();
         }
     }
 
     showInstallInstructions() {
         const userAgent = navigator.userAgent.toLowerCase();
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isAndroid = /android/i.test(navigator.userAgent);
+        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        let title = '📱 Come installare l\'app';
         let instructions = '';
         
-        if (userAgent.includes('chrome') && !userAgent.includes('edg')) {
-            instructions = 'Per installare:\n1. Clicca sui tre puntini (⋮) in alto a destra\n2. Seleziona "Installa Stock Ristorante"\n3. Conferma l\'installazione';
-        } else if (userAgent.includes('safari') && !userAgent.includes('chrome')) {
-            instructions = 'Per installare su Safari:\n1. Tocca il pulsante Condividi (□↗)\n2. Scorri e tocca "Aggiungi alla schermata Home"\n3. Tocca "Aggiungi"';
+        if (isIOS) {
+            if (userAgent.includes('safari')) {
+                title = '🍎 Installazione su iPhone/iPad';
+                instructions = 'Per aggiungere alla schermata Home:\n\n' +
+                             '1. 📱 Tocca il pulsante "Condividi" in basso\n' +
+                             '   (icona quadrata con freccia verso l\'alto)\n\n' +
+                             '2. 📋 Scorri verso il basso e tocca\n' +
+                             '   "Aggiungi alla schermata Home"\n\n' +
+                             '3. ✅ Tocca "Aggiungi" per confermare\n\n' +
+                             '4. 🎉 L\'app apparirà sulla tua schermata Home!';
+            } else {
+                instructions = 'Per installare su iOS:\n\n' +
+                             '⚠️ Apri questa pagina in Safari per installarla\n\n' +
+                             '1. Copia questo link\n' +
+                             '2. Apri Safari\n' +
+                             '3. Incolla il link e vai alla pagina\n' +
+                             '4. Segui le istruzioni di installazione';
+            }
+        } else if (isAndroid) {
+            if (userAgent.includes('chrome')) {
+                title = '🤖 Installazione su Android';
+                instructions = 'Per installare l\'app:\n\n' +
+                             '1. 📱 Tocca i tre puntini (⋮) in alto a destra\n\n' +
+                             '2. 📲 Seleziona "Installa app" o\n' +
+                             '   "Aggiungi alla schermata Home"\n\n' +
+                             '3. ✅ Tocca "Installa" per confermare\n\n' +
+                             '4. 🎉 L\'app sarà installata sul tuo dispositivo!';
+            } else if (userAgent.includes('firefox')) {
+                instructions = 'Per installare su Firefox Android:\n\n' +
+                             '1. Tocca i tre puntini (⋮) nel menu\n' +
+                             '2. Seleziona "Installa"\n' +
+                             '3. Conferma l\'installazione';
+            } else {
+                instructions = 'Per installare su Android:\n\n' +
+                             '⚠️ Apri questa pagina in Chrome per installarla\n\n' +
+                             '1. Apri Chrome\n' +
+                             '2. Vai a questa pagina\n' +
+                             '3. Segui le istruzioni di installazione';
+            }
+        } else if (userAgent.includes('chrome') && !userAgent.includes('edg')) {
+            instructions = 'Per installare su Chrome:\n\n' +
+                         '1. 🖱️ Clicca sui tre puntini (⋮) in alto a destra\n' +
+                         '2. 📲 Seleziona "Installa Stock Ristorante"\n' +
+                         '3. ✅ Conferma l\'installazione';
         } else if (userAgent.includes('firefox')) {
-            instructions = 'Per installare su Firefox:\n1. Clicca sui tre trattini (☰)\n2. Seleziona "Installa"\n3. Conferma l\'installazione';
+            instructions = 'Per installare su Firefox:\n\n' +
+                         '1. 🖱️ Clicca sui tre trattini (☰)\n' +
+                         '2. 📲 Seleziona "Installa"\n' +
+                         '3. ✅ Conferma l\'installazione';
+        } else if (userAgent.includes('edg')) {
+            instructions = 'Per installare su Edge:\n\n' +
+                         '1. 🖱️ Clicca sui tre puntini (...) in alto a destra\n' +
+                         '2. 📲 Seleziona "App" > "Installa questo sito come app"\n' +
+                         '3. ✅ Conferma l\'installazione';
         } else {
-            instructions = 'Per installare questa app:\n1. Cerca l\'opzione "Installa" o "Aggiungi alla schermata Home" nel menu del browser\n2. Segui le istruzioni del tuo browser';
+            instructions = 'Per installare questa app:\n\n' +
+                         '1. 🔍 Cerca l\'opzione "Installa" o "Aggiungi alla schermata Home"\n' +
+                         '   nel menu del tuo browser\n\n' +
+                         '2. 📱 Segui le istruzioni del tuo browser\n\n' +
+                         '💡 Suggerimento: Prova ad aprire questa pagina in\n' +
+                         '   Chrome, Firefox o Safari per l\'installazione';
         }
         
-        alert('📱 Istruzioni per l\'installazione:\n\n' + instructions);
+        // Create a custom modal instead of alert for better mobile experience
+        this.showInstallModal(title, instructions);
+    }
+    
+    showInstallModal(title, instructions) {
+        // Remove existing modal if present
+        const existingModal = document.getElementById('installInstructionsModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'installInstructionsModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            padding: 20px;
+            box-sizing: border-box;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: left;
+        `;
+        
+        modalContent.innerHTML = `
+            <h3 style="margin: 0 0 16px 0; color: #333; font-size: 18px;">${title}</h3>
+            <div style="white-space: pre-line; line-height: 1.6; color: #555; margin-bottom: 20px;">${instructions}</div>
+            <button onclick="document.getElementById('installInstructionsModal').remove()" 
+                    style="background: #6366f1; color: white; border: none; padding: 12px 24px; 
+                           border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%;">
+                Ho capito
+            </button>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
     }
 
     // Reinitialize app with default data
