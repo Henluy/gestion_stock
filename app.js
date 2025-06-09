@@ -15,6 +15,7 @@ class StockManager {
         this.extractCategoriesFromProducts();
         this.validateProductCategories();
         this.setupEventListeners();
+        this.setupSearchFunctionality();
         this.renderProducts();
         this.renderCategoryFilters();
         this.updateCategoryCounts();
@@ -374,12 +375,28 @@ class StockManager {
         this.updateCategoryCounts();
         this.updateAlerts();
         
-        this.showToast('✅ Prodotto aggiunto con successo', 'success');
+        // Intelligent message based on product status
+        const status = this.getProductStatus(newProduct);
+        let message = '✅ Prodotto aggiunto con successo';
+        let toastType = 'success';
+        
+        if (status === 'esaurito') {
+            message = `🚨 Prodotto "${newProduct.name}" aggiunto ma è esaurito!`;
+            toastType = 'error';
+        } else if (status === 'basso') {
+            message = `⚠️ Prodotto "${newProduct.name}" aggiunto ma stock è basso!`;
+            toastType = 'warning';
+        } else {
+            message = `✅ Prodotto "${newProduct.name}" aggiunto con successo!`;
+        }
+        
+        this.showToast(message, toastType);
     }
 
     updateProduct(id, productData) {
         const index = this.products.findIndex(p => p.id === id);
         if (index !== -1) {
+            const oldProduct = {...this.products[index]};
             this.products[index] = {
                 ...this.products[index],
                 ...productData,
@@ -387,6 +404,7 @@ class StockManager {
                 minThreshold: parseInt(productData.minThreshold) || 1
             };
             
+            const updatedProduct = this.products[index];
             this.saveProducts();
             
             // Extract categories from products and update UI
@@ -398,35 +416,82 @@ class StockManager {
             this.updateCategoryCounts();
             this.updateAlerts();
             
-            this.showToast('✅ Prodotto aggiornato', 'success');
+            // Intelligent message based on status changes
+            const oldStatus = this.getProductStatus(oldProduct);
+            const newStatus = this.getProductStatus(updatedProduct);
+            let message = `✅ Prodotto "${updatedProduct.name}" aggiornato`;
+            let toastType = 'success';
+            
+            if (oldStatus !== newStatus) {
+                if (newStatus === 'esaurito') {
+                    message = `🚨 "${updatedProduct.name}" aggiornato ma ora è esaurito!`;
+                    toastType = 'error';
+                } else if (newStatus === 'basso') {
+                    message = `⚠️ "${updatedProduct.name}" aggiornato ma stock è basso!`;
+                    toastType = 'warning';
+                } else if (oldStatus === 'esaurito' && newStatus === 'ok') {
+                    message = `✅ "${updatedProduct.name}" è tornato disponibile!`;
+                } else if (oldStatus === 'basso' && newStatus === 'ok') {
+                    message = `✅ "${updatedProduct.name}" stock normalizzato!`;
+                }
+            }
+            
+            this.showToast(message, toastType);
         }
     }
 
     deleteProduct(id) {
-        if (confirm('Sei sicuro di voler eliminare questo prodotto?')) {
+        const product = this.products.find(p => p.id === id);
+        if (!product) return;
+        
+        if (confirm(`Sei sicuro di voler eliminare "${product.name}"?`)) {
+            const categoryName = this.getCategoryName(product.category);
             this.products = this.products.filter(p => p.id !== id);
             this.saveProducts();
+            
+            // Update all UI components after deletion
+            this.extractCategoriesFromProducts();
+            this.renderCategoryFilters();
+            this.renderCategoryStats();
             this.renderProducts();
             this.updateCategoryCounts();
             this.updateAlerts();
             
-            this.showToast('🗑️ Prodotto eliminato', 'warning');
+            this.showToast(`🗑️ "${product.name}" eliminato dalla categoria ${categoryName}`, 'warning');
         }
     }
 
     updateQuantity(id, change) {
         const product = this.products.find(p => p.id === id);
         if (product) {
+            const oldQuantity = product.quantity;
             const newQuantity = Math.max(0, product.quantity + change);
             product.quantity = newQuantity;
             
             this.saveProducts();
+            
+            // Complete UI synchronization
             this.renderProducts();
+            this.renderCategoryFilters();
+            this.renderCategoryStats();
             this.updateCategoryCounts();
             this.updateAlerts();
             
             const action = change > 0 ? 'aumentata' : 'diminuita';
-            this.showToast(`📦 Quantità ${action}: ${product.name}`, 'success');
+            
+            // Show different messages based on stock status changes
+            let message = `📦 Quantità ${action}: ${product.name}`;
+            const status = this.getProductStatus(product);
+            
+            if (oldQuantity === 0 && newQuantity > 0) {
+                message = `✅ ${product.name} è tornato disponibile!`;
+            } else if (oldQuantity > 0 && newQuantity === 0) {
+                message = `🚨 ${product.name} è esaurito!`;
+            } else if (status === 'basso' && change > 0) {
+                message = `⚠️ ${product.name} ancora in stock basso`;
+            }
+            
+            this.showToast(message, newQuantity === 0 ? 'error' : (status === 'basso' ? 'warning' : 'success'));
         }
     }
 
@@ -878,6 +943,161 @@ class StockManager {
             };
             reader.readAsText(file);
         });
+    }
+
+    // Search Functionality
+    setupSearchFunctionality() {
+        const searchInput = document.getElementById('productSearch');
+        const clearBtn = document.getElementById('clearSearch');
+        const searchResults = document.getElementById('searchResults');
+        
+        let searchTimeout;
+        
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length === 0) {
+                this.hideSearchResults();
+                clearBtn.style.display = 'none';
+                return;
+            }
+            
+            clearBtn.style.display = 'block';
+            
+            // Debounce search
+            searchTimeout = setTimeout(() => {
+                this.performSearch(query);
+            }, 300);
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            this.hideSearchResults();
+            clearBtn.style.display = 'none';
+            searchInput.focus();
+        });
+        
+        // Hide results when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                this.hideSearchResults();
+            }
+        });
+        
+        // Keyboard navigation
+        searchInput.addEventListener('keydown', (e) => {
+            this.handleSearchKeyboard(e);
+        });
+    }
+    
+    performSearch(query) {
+        const results = this.products.filter(product => 
+            product.name.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 8); // Limit to 8 results
+        
+        this.displaySearchResults(results, query);
+    }
+    
+    displaySearchResults(results, query) {
+        const searchResults = document.getElementById('searchResults');
+        
+        if (results.length === 0) {
+            searchResults.innerHTML = `
+                <div class="search-result-item">
+                    <div class="search-result-info">
+                        <div class="search-result-name">Nessun risultato</div>
+                        <div class="search-result-details">Nessun prodotto trovato per "${query}"</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            searchResults.innerHTML = results.map(product => {
+                const status = this.getProductStatus(product);
+                const categoryName = this.getCategoryName(product.category);
+                const categoryIcon = this.getCategoryIcon(product.category);
+                
+                return `
+                    <div class="search-result-item" data-product-id="${product.id}">
+                        <div class="search-result-info">
+                            <div class="search-result-name">${product.name}</div>
+                            <div class="search-result-details">
+                                ${categoryIcon} ${categoryName} • ${product.quantity} ${product.unit} • ${this.getStatusText(status)}
+                            </div>
+                        </div>
+                        <div class="search-result-actions">
+                            <button class="search-quick-btn decrease" onclick="stockManager.quickUpdateQuantity(${product.id}, -1)" title="Diminuisci">
+                                −
+                            </button>
+                            <span class="search-result-quantity">${product.quantity}</span>
+                            <button class="search-quick-btn increase" onclick="stockManager.quickUpdateQuantity(${product.id}, 1)" title="Aumenta">
+                                +
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        searchResults.style.display = 'block';
+    }
+    
+    hideSearchResults() {
+        const searchResults = document.getElementById('searchResults');
+        searchResults.style.display = 'none';
+    }
+    
+    handleSearchKeyboard(e) {
+        const searchResults = document.getElementById('searchResults');
+        const items = searchResults.querySelectorAll('.search-result-item[data-product-id]');
+        
+        if (items.length === 0) return;
+        
+        let selectedIndex = Array.from(items).findIndex(item => item.classList.contains('selected'));
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
+                this.updateSearchSelection(items, selectedIndex);
+                break;
+                
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
+                this.updateSearchSelection(items, selectedIndex);
+                break;
+                
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0) {
+                    const productId = parseInt(items[selectedIndex].dataset.productId);
+                    this.quickUpdateQuantity(productId, 1);
+                }
+                break;
+                
+            case 'Escape':
+                this.hideSearchResults();
+                break;
+        }
+    }
+    
+    updateSearchSelection(items, selectedIndex) {
+        items.forEach((item, index) => {
+            item.classList.toggle('selected', index === selectedIndex);
+        });
+    }
+    
+    quickUpdateQuantity(productId, change) {
+        this.updateQuantity(productId, change);
+        
+        // Update the search results display
+        const searchInput = document.getElementById('productSearch');
+        if (searchInput.value.trim()) {
+            setTimeout(() => {
+                this.performSearch(searchInput.value.trim());
+            }, 100);
+        }
     }
 
     handleProductSubmit() {
