@@ -1,0 +1,86 @@
+{
+  "name": "Stock Ristorante - Gestione Magazzino",
+  "short_name": "Stock Ristorante",
+  "description": "Applicazione per la gestione del magazzino del ristorante con controllo stock in tempo reale",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "lang": "it",
+  "categories": ["business", "productivity", "food"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "features": [
+    "Cross Platform",
+    "fast",
+    "simple"
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "Visualizza Stock",
+      "short_name": "Stock",
+      "description": "Visualizza l'inventario completo",
+      "url": "./index.html",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Aggiungi Prodotto",
+      "short_name": "Aggiungi",
+      "description": "Aggiungi un nuovo prodotto al magazzino",
+      "url": "./index.html?action=add",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Avvisi Stock",
+      "short_name": "Avvisi",
+      "description": "Controlla gli avvisi di stock basso",
+      "url": "./index.html?section=alerts",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

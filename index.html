@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Ristorante</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Stock Ristorante">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1>🍽️ Stock Ristorante</h1>
+            <div class="header-stats">
+                <span id="totalItems">0</span>
+                <small>Totali</small>
+            </div>
+        </div>
+    </header>
+
+    <!-- Install PWA Button -->
+    <div id="installPrompt" class="install-prompt hidden">
+        <button id="installBtn" class="install-btn">
+            📱 Installa App
+        </button>
+    </div>
+
+    <!-- Category Filters -->
+    <div class="category-filters">
+        <button class="category-btn active" data-category="all">
+            <span class="category-icon">📋</span>
+            <span>TUTTI</span>
+            <span class="category-count" id="count-all">0</span>
+        </button>
+        <button class="category-btn" data-category="carne">
+            <span class="category-icon">🥩</span>
+            <span>CARNE</span>
+            <span class="category-count" id="count-carne">0</span>
+        </button>
+        <button class="category-btn" data-category="verdure">
+            <span class="category-icon">🥬</span>
+            <span>VERDURE</span>
+            <span class="category-count" id="count-verdure">0</span>
+        </button>
+        <button class="category-btn" data-category="formaggi">
+            <span class="category-icon">🧀</span>
+            <span>FORMAGGI</span>
+            <span class="category-count" id="count-formaggi">0</span>
+        </button>
+        <button class="category-btn" data-category="pasta">
+            <span class="category-icon">🍝</span>
+            <span>PASTA</span>
+            <span class="category-count" id="count-pasta">0</span>
+        </button>
+        <button class="category-btn" data-category="condimenti">
+            <span class="category-icon">🫒</span>
+            <span>CONDIMENTI</span>
+            <span class="category-count" id="count-condimenti">0</span>
+        </button>
+        <button class="category-btn" data-category="pesce">
+            <span class="category-icon">🐟</span>
+            <span>PESCE</span>
+            <span class="category-count" id="count-pesce">0</span>
+        </button>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Stock List Section -->
+        <section id="stockSection" class="section active">
+            <div class="stock-grid" id="stockGrid">
+                <!-- Stock items will be dynamically generated -->
+            </div>
+        </section>
+
+        <!-- Categories Section -->
+        <section id="categoriesSection" class="section">
+            <div class="categories-overview">
+                <h2>Gestione Categorie</h2>
+                <div class="category-stats" id="categoryStats">
+                    <!-- Category statistics will be generated -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Orders Section -->
+        <section id="ordersSection" class="section">
+            <div class="orders-container">
+                <h2>Ordini</h2>
+                <div class="orders-list" id="ordersList">
+                    <div class="empty-state">
+                        <span class="empty-icon">📦</span>
+                        <p>Nessun ordine in corso</p>
+                        <button class="btn-primary" onclick="createOrder()">Crea Nuovo Ordine</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Alerts Section -->
+        <section id="alertsSection" class="section">
+            <div class="alerts-container">
+                <h2>Avvisi Stock</h2>
+                <div class="alerts-list" id="alertsList">
+                    <!-- Alerts will be dynamically generated -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Export Section -->
+        <section id="exportSection" class="section">
+            <div class="export-container">
+                <h2>Backup & Export</h2>
+                <div class="export-options">
+                    <div class="export-card">
+                        <h3>📊 Esporta Dati</h3>
+                        <p>Scarica i dati del stock in formato CSV o JSON</p>
+                        <div class="export-buttons">
+                            <button class="btn-secondary" onclick="exportData('csv')">Esporta CSV</button>
+                            <button class="btn-secondary" onclick="exportData('json')">Esporta JSON</button>
+                        </div>
+                    </div>
+                    <div class="export-card">
+                        <h3>📥 Importa Dati</h3>
+                        <p>Ripristina i dati da un file di backup</p>
+                        <input type="file" id="importFile" accept=".json,.csv" style="display: none;">
+                        <button class="btn-primary" onclick="document.getElementById('importFile').click()">Seleziona File</button>
+                    </div>
+                    <div class="export-card">
+                        <h3>📱 Installa App</h3>
+                        <p>Installa o reinstalla l'applicazione sul dispositivo</p>
+                        <button class="btn-primary" id="manualInstallBtn" onclick="stockManager.triggerInstall()">Installa/Reinstalla</button>
+                    </div>
+                    <div class="export-card">
+                        <h3>🔄 Reinizializza</h3>
+                        <p>Ripristina l'applicazione ai dati predefiniti</p>
+                        <button class="btn-warning" onclick="stockManager.reinitializeApp()">Reinizializza App</button>
+                    </div>
+                    <div class="export-card">
+                        <h3>🗑️ Reset Dati</h3>
+                        <p>Cancella tutti i dati e ricomincia da capo</p>
+                        <button class="btn-danger" onclick="resetAllData()">Reset Completo</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Floating Add Button -->
+    <button class="fab" id="addProductBtn" onclick="openAddProductModal()">
+        <span class="fab-icon">+</span>
+    </button>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-section="stock">
+            <span class="nav-icon">📦</span>
+            <span class="nav-label">Stock</span>
+        </button>
+        <button class="nav-item" data-section="categories">
+            <span class="nav-icon">📂</span>
+            <span class="nav-label">Categorie</span>
+        </button>
+        <button class="nav-item" data-section="orders">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">Ordini</span>
+        </button>
+        <button class="nav-item" data-section="alerts">
+            <span class="nav-icon">⚠️</span>
+            <span class="nav-label">Avvisi</span>
+            <span class="alert-badge" id="alertBadge">0</span>
+        </button>
+        <button class="nav-item" data-section="export">
+            <span class="nav-icon">💾</span>
+            <span class="nav-label">Export</span>
+        </button>
+    </nav>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Aggiungi Prodotto</h3>
+                <button class="modal-close" onclick="closeProductModal()">&times;</button>
+            </div>
+            <form id="productForm" class="modal-body">
+                <div class="form-group">
+                    <label for="productName">Nome Prodotto</label>
+                    <input type="text" id="productName" required>
+                </div>
+                <div class="form-group">
+                    <label for="productCategory">Categoria</label>
+                    <select id="productCategory" required>
+                        <option value="carne">🥩 Carne</option>
+                        <option value="verdure">🥬 Verdure</option>
+                        <option value="formaggi">🧀 Formaggi</option>
+                        <option value="pasta">🍝 Pasta</option>
+                        <option value="condimenti">🫒 Condimenti</option>
+                        <option value="pesce">🐟 Pesce</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="productQuantity">Quantità Iniziale</label>
+                    <input type="number" id="productQuantity" min="0" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="productMinThreshold">Soglia Minima</label>
+                    <input type="number" id="productMinThreshold" min="1" value="5">
+                </div>
+                <div class="form-group">
+                    <label for="productUnit">Unità di Misura</label>
+                    <select id="productUnit">
+                        <option value="pz">Pezzi</option>
+                        <option value="kg">Kg</option>
+                        <option value="g">Grammi</option>
+                        <option value="l">Litri</option>
+                        <option value="ml">Millilitri</option>
+                    </select>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeProductModal()">Annulla</button>
+                <button type="submit" form="productForm" class="btn-primary">Salva</button>
+                <button type="button" id="deleteProductBtn" class="btn-danger" onclick="deleteProduct()" style="display: none;">Elimina</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Category Modal -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="categoryModalTitle">Aggiungi Categoria</h3>
+                <button class="modal-close" onclick="stockManager.closeCategoryModal()">&times;</button>
+            </div>
+            <form id="categoryForm" class="modal-body">
+                <div class="form-group">
+                    <label for="categoryName">Nome Categoria</label>
+                    <input type="text" id="categoryName" required placeholder="Es: Bevande">
+                </div>
+                <div class="form-group">
+                    <label for="categoryIcon">Icona (Emoji)</label>
+                    <input type="text" id="categoryIcon" placeholder="🍷" maxlength="2">
+                    <small>Inserisci un'emoji per rappresentare la categoria</small>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="stockManager.closeCategoryModal()">Annulla</button>
+                <button type="submit" form="categoryForm" class="btn-primary">Salva</button>
+                <button type="button" id="deleteCategoryBtn" class="btn-danger" onclick="stockManager.deleteCategory(stockManager.editingCategoryId)" style="display: none;">Elimina</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
