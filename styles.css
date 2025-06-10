@@ -3,6 +3,10 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    /* GPU acceleration for better performance */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
 }
 
 body {
@@ -11,47 +15,59 @@ body {
     min-height: 100vh;
     color: #333;
     overflow-x: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* Optimize rendering */
+    will-change: transform, opacity;
+    contain: layout style paint;
 }
 
-/* Smooth scrolling */
+/* Smooth scrolling with momentum */
 html {
     scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Enhanced transitions for all interactive elements */
 * {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                border 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                opacity 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                background 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                border 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                filter 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* Optimize for animations */
+    will-change: auto;
 }
 
 /* Quick Action Buttons */
 .quick-actions {
     display: flex;
     gap: 8px;
-    margin-top: 8px;
-    animation: fadeInUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s both;
+    margin-top: 15px;
+    /* Optimize quick actions container */
+    contain: layout style;
 }
 
 .quick-btn {
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
+    padding: 8px 12px;
+    border: none;
     border-radius: 8px;
-    padding: 6px 10px;
     font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    min-width: 28px;
-    height: 28px;
+    transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    overflow: hidden;
+    min-width: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
-    font-weight: 600;
+    gap: 4px;
+    /* Optimize button performance */
+    transform: translateZ(0);
+    will-change: transform, box-shadow;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .quick-btn::before {
@@ -61,10 +77,15 @@ html {
     left: 50%;
     width: 0;
     height: 0;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, transparent 70%);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.3);
     border-radius: 50%;
+    transform: translate(-50%, -50%) translateZ(0);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.quick-btn:active::before {
+    width: 120px;
+    height: 120px;
 }
 
 .quick-btn:hover {
@@ -109,6 +130,49 @@ html {
     animation: bounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.increase-btn, .decrease-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    /* Optimize quantity buttons */
+    transform: translateZ(0);
+    will-change: transform, box-shadow;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.decrease-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.increase-btn:hover, .decrease-btn:hover {
+    transform: translateY(-1px) scale(1.05) translateZ(0);
+    box-shadow: 0 3px 12px rgba(16, 185, 129, 0.4);
+}
+
+.decrease-btn:hover {
+    box-shadow: 0 3px 12px rgba(239, 68, 68, 0.4);
+}
+
+.increase-btn:active, .decrease-btn:active {
+    transform: translateY(0) scale(0.95) translateZ(0);
+    transition: all 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -129,6 +193,10 @@ html {
     position: sticky;
     top: 0;
     z-index: 100;
+    /* Optimize header performance */
+    transform: translateZ(0);
+    will-change: transform, box-shadow;
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .header-content {
@@ -436,6 +504,8 @@ html {
     background: white;
     border-bottom: 1px solid #e5e7eb;
     animation: fadeInDown 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s both;
+    /* Optimize search container */
+    contain: layout style;
 }
 
 .search-input-wrapper {
@@ -452,21 +522,26 @@ html {
     border-radius: 25px;
     font-size: 16px;
     background: #f9fafb;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     outline: none;
     position: relative;
+    /* Optimize input performance */
+    transform: translateZ(0);
+    will-change: transform, box-shadow, border-color;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .search-input:focus {
     border-color: #6366f1;
     background: white;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15), 0 8px 25px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15), 0 6px 20px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px) scale(1.01) translateZ(0);
 }
 
 .search-input:hover {
     background: rgba(255, 255, 255, 0.95);
-    transform: translateY(-1px);
+    transform: translateY(-1px) translateZ(0);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
@@ -810,51 +885,64 @@ body.offline #installBtn:hover {
 /* Stock Grid */
 .stock-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+    animation: fadeInUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s both;
+    /* Optimize grid performance */
+    contain: layout style;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .stock-item {
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
     border-radius: 16px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
     overflow: hidden;
-    animation: slideInUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.stock-item:hover {
-    transform: translateY(-6px) scale(1.02);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    animation: slideInUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    /* Optimize card performance */
+    transform: translateZ(0);
+    will-change: transform, box-shadow;
+    contain: layout style paint;
+    touch-action: manipulation;
 }
 
 .stock-item::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    left: -100%;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c);
+    transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateZ(0);
 }
 
 .stock-item:hover::before {
-    transform: scaleX(1);
+    left: 0;
+}
+
+.stock-item:hover {
+    transform: translateY(-4px) scale(1.01) translateZ(0);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 @keyframes slideInUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px) translateZ(0);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) translateZ(0);
     }
 }
 
@@ -1131,19 +1219,26 @@ body.offline #installBtn:hover {
 
 /* Buttons */
 .add-product-btn {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: white;
     border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
+    padding: 14px 28px;
+    border-radius: 12px;
     font-size: 16px;
     font-weight: 600;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex;
+    align-items: center;
+    gap: 8px;
     position: relative;
     overflow: hidden;
+    /* Optimize button performance */
+    transform: translateZ(0);
+    will-change: transform, box-shadow;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .add-product-btn::before {
@@ -1154,13 +1249,14 @@ body.offline #installBtn:hover {
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateZ(0);
 }
 
 .add-product-btn:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 12px 25px rgba(99, 102, 241, 0.4);
-    background: linear-gradient(135deg, #5855f7, #9333ea);
+    transform: translateY(-2px) scale(1.02) translateZ(0);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
 }
 
 .add-product-btn:hover::before {
@@ -1168,8 +1264,8 @@ body.offline #installBtn:hover {
 }
 
 .add-product-btn:active {
-    transform: translateY(-1px) scale(0.98);
-    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(0) scale(0.98) translateZ(0);
+    transition: all 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .btn-primary {
@@ -1384,12 +1480,16 @@ body.offline #installBtn:hover {
     z-index: 200;
     padding: 1rem;
     backdrop-filter: blur(5px);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* Optimize modal performance */
+    transform: translateZ(0);
+    will-change: opacity, backdrop-filter;
+    contain: layout style paint;
 }
 
 .modal.active {
     display: flex;
-    animation: modalFadeIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: modalFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .modal-content {
@@ -1399,10 +1499,15 @@ body.offline #installBtn:hover {
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
-    animation: modalSlideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: modalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     transform-origin: center;
     position: relative;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    /* Optimize modal content performance */
+    transform: translateZ(0);
+    will-change: transform, opacity;
+    contain: layout style paint;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-content::before {
@@ -1483,6 +1588,37 @@ body.offline #installBtn:hover {
     margin-bottom: 0.5rem;
     font-weight: 600;
     color: #374151;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    background: #f9fafb;
+    transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    outline: none;
+    position: relative;
+    /* Optimize input performance */
+    transform: translateZ(0);
+    will-change: transform, box-shadow, border-color;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    contain: layout style;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #6366f1;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12), 0 4px 15px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px) translateZ(0);
+}
+
+input:hover, select:hover, textarea:hover {
+    background: rgba(255, 255, 255, 0.95);
+    transform: translateZ(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .form-group input,
@@ -1656,11 +1792,22 @@ body.offline #installBtn:hover {
 @keyframes fadeIn {
     from { 
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(0.95) translateZ(0);
     }
     to { 
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateZ(0);
+    }
+}
+
+@keyframes slideInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px) translateZ(0);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0) translateZ(0);
     }
 }
 
