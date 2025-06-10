@@ -1,7 +1,7 @@
 {
   "name": "Stock Ristorante - Gestione Magazzino",
   "short_name": "Stock Ristorante",
-  "description": "Applicazione per la gestione del magazzino del ristorante con controllo stock in tempo reale",
+  "description": "Applicazione PWA per la gestione del magazzino del ristorante con controllo stock in tempo reale, funzionalità offline e sincronizzazione automatica",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#667eea",
@@ -9,7 +9,11 @@
   "orientation": "portrait-primary",
   "scope": "./",
   "lang": "it",
-  "categories": ["business", "productivity", "food"],
+  "categories": ["business", "productivity", "food", "utilities"],
+  "dir": "ltr",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "id": "stock-ristorante-pwa",
   "icons": [
     {
       "src": "icon-192.png",
@@ -45,7 +49,31 @@
   },
   "prefer_related_applications": false,
   "related_applications": [],
-  "shortcuts": [
+  "protocol_handlers": [
+    {
+      "protocol": "web+stockapp",
+      "url": "./index.html?action=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "accept": {
+        "application/json": [".json"],
+        "text/csv": [".csv"]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+     }
+   },
+   "shortcuts": [
     {
       "name": "Visualizza Stock",
       "short_name": "Stock",

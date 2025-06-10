@@ -31,6 +31,34 @@
         </button>
     </div>
 
+    <!-- PWA Management Panel -->
+    <div id="pwaPanel" class="pwa-panel hidden">
+        <div class="pwa-panel-content">
+            <h3>🔧 Gestione App</h3>
+            <div class="pwa-actions">
+                <button id="updateBtn" class="pwa-btn update-btn">
+                    🔄 Aggiorna App
+                </button>
+                <button id="clearCacheBtn" class="pwa-btn clear-cache-btn">
+                    🗑️ Svuota Cache
+                </button>
+                <button id="reinstallBtn" class="pwa-btn reinstall-btn">
+                    📱 Reinstalla
+                </button>
+            </div>
+            <button id="closePwaPanel" class="pwa-btn close-btn">
+                ✕ Chiudi
+            </button>
+        </div>
+    </div>
+
+    <!-- PWA Settings Button (visible when installed) -->
+    <div id="pwaSettings" class="pwa-settings hidden">
+        <button id="pwaSettingsBtn" class="pwa-settings-btn" title="Gestione App">
+            ⚙️
+        </button>
+    </div>
+
     <!-- Category Filters -->
     <div class="category-filters">
         <button class="category-btn active" data-category="all">

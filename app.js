@@ -1290,13 +1290,14 @@ class StockManager {
             navigator.serviceWorker.register('./sw.js')
                 .then(registration => {
                     console.log('SW registered:', registration);
+                    this.swRegistration = registration;
                     
                     // Listen for updates
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                this.showToast('🔄 Nuova versione disponibile. Ricarica la pagina.', 'info');
+                                this.showUpdateAvailable();
                             }
                         });
                     });
@@ -1319,6 +1320,9 @@ class StockManager {
         
         // Show install button based on platform capabilities
         this.updateInstallButtonVisibility();
+        
+        // Setup PWA management panel
+        this.setupPWAManagement();
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -1334,6 +1338,7 @@ class StockManager {
             installPrompt.classList.add('hidden');
             this.showToast('🎉 App installata con successo!', 'success');
             this.updateInstallButtonVisibility();
+            this.showPWASettings();
         });
         
         // Listen for changes in display mode
@@ -1363,6 +1368,7 @@ class StockManager {
         
         if (isInstalled) {
             installPrompt.classList.add('hidden');
+            this.showPWASettings();
             return;
         }
         
@@ -1389,6 +1395,169 @@ class StockManager {
             }
         } else {
             installPrompt.classList.add('hidden');
+        }
+        
+        this.hidePWASettings();
+    }
+    
+    // Setup PWA Management Panel
+    setupPWAManagement() {
+        const pwaSettingsBtn = document.getElementById('pwaSettingsBtn');
+        const pwaPanel = document.getElementById('pwaPanel');
+        const closePwaPanel = document.getElementById('closePwaPanel');
+        const updateBtn = document.getElementById('updateBtn');
+        const clearCacheBtn = document.getElementById('clearCacheBtn');
+        const reinstallBtn = document.getElementById('reinstallBtn');
+        
+        // PWA Settings button click
+        pwaSettingsBtn.addEventListener('click', () => {
+            this.openPWAPanel();
+        });
+        
+        // Close panel
+        closePwaPanel.addEventListener('click', () => {
+            this.closePWAPanel();
+        });
+        
+        // Close panel when clicking outside
+        pwaPanel.addEventListener('click', (e) => {
+            if (e.target === pwaPanel) {
+                this.closePWAPanel();
+            }
+        });
+        
+        // Update app
+        updateBtn.addEventListener('click', () => {
+            this.updateApp();
+        });
+        
+        // Clear cache
+        clearCacheBtn.addEventListener('click', () => {
+            this.clearAppCache();
+        });
+        
+        // Reinstall app
+        reinstallBtn.addEventListener('click', () => {
+            this.reinstallApp();
+        });
+    }
+    
+    // Show PWA settings button (when app is installed)
+    showPWASettings() {
+        const pwaSettings = document.getElementById('pwaSettings');
+        const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone === true;
+        
+        if (isInstalled) {
+            pwaSettings.classList.remove('hidden');
+        }
+    }
+    
+    // Hide PWA settings button
+    hidePWASettings() {
+        const pwaSettings = document.getElementById('pwaSettings');
+        pwaSettings.classList.add('hidden');
+    }
+    
+    // Open PWA management panel
+    openPWAPanel() {
+        const pwaPanel = document.getElementById('pwaPanel');
+        pwaPanel.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Close PWA management panel
+    closePWAPanel() {
+        const pwaPanel = document.getElementById('pwaPanel');
+        pwaPanel.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
+    // Show update available notification
+    showUpdateAvailable() {
+        this.showToast('🔄 Nuova versione disponibile!', 'info', 0, () => {
+            this.updateApp();
+        });
+    }
+    
+    // Update app
+    async updateApp() {
+        try {
+            if (this.swRegistration && this.swRegistration.waiting) {
+                // Tell the waiting service worker to skip waiting and become active
+                this.swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                
+                // Listen for the controlling service worker change
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                });
+                
+                this.showToast('🔄 Aggiornamento in corso...', 'info');
+                this.closePWAPanel();
+            } else {
+                // Force reload to check for updates
+                window.location.reload(true);
+            }
+        } catch (error) {
+            console.error('Errore durante l\'aggiornamento:', error);
+            this.showToast('❌ Errore durante l\'aggiornamento', 'error');
+        }
+    }
+    
+    // Clear app cache
+    async clearAppCache() {
+        try {
+            // Clear all caches
+            const cacheNames = await caches.keys();
+            await Promise.all(
+                cacheNames.map(cacheName => caches.delete(cacheName))
+            );
+            
+            // Clear localStorage
+            const confirmClear = confirm('Vuoi anche cancellare tutti i dati salvati localmente (prodotti, categorie)?');
+            if (confirmClear) {
+                localStorage.clear();
+            }
+            
+            this.showToast('🗑️ Cache svuotata con successo!', 'success');
+            this.closePWAPanel();
+            
+            // Reload after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Errore durante la pulizia della cache:', error);
+            this.showToast('❌ Errore durante la pulizia della cache', 'error');
+        }
+    }
+    
+    // Reinstall app
+    async reinstallApp() {
+        try {
+            // First clear everything
+            await this.clearAppCache();
+            
+            // Unregister service worker
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+            
+            this.showToast('🔄 Reinstallazione in corso...', 'info');
+            this.closePWAPanel();
+            
+            // Reload to trigger fresh installation
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Errore durante la reinstallazione:', error);
+            this.showToast('❌ Errore durante la reinstallazione', 'error');
         }
     }
 

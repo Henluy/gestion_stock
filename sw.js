@@ -71,6 +71,44 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Listen for messages from the main thread
+self.addEventListener('message', (event) => {
+  console.log('Service Worker: Received message', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    // Skip waiting and become the active service worker
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'GET_VERSION') {
+    // Send back the current cache version
+    event.ports[0].postMessage({
+      version: CACHE_NAME,
+      static: STATIC_CACHE,
+      dynamic: DYNAMIC_CACHE
+    });
+  }
+  
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    // Clear all caches
+    event.waitUntil(
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map(cacheName => caches.delete(cacheName))
+        );
+      }).then(() => {
+        console.log('Service Worker: All caches cleared');
+        // Notify the main thread
+        self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({ type: 'CACHE_CLEARED' });
+          });
+        });
+      })
+    );
+  }
+});
+
 // Fetch event - intelligent caching strategy
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
