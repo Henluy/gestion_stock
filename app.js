@@ -1372,26 +1372,35 @@ class StockManager {
             return;
         }
         
-        // Show install button if:
-        // 1. We have a deferred prompt (Chrome/Edge)
-        // 2. We're on a mobile device that supports PWA installation
-        // 3. We're on Safari iOS
-        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+        // Check if PWA is supported on this device/browser
+        if (!this.isPWASupported()) {
+            installPrompt.classList.add('hidden');
+            this.hidePWASettings();
+            return;
+        }
         
-        // Show button if we have deferred prompt OR if we're on a supported mobile platform
-        if (this.deferredPrompt || (isMobile && (isChrome || (isIOS && isSafari)))) {
+        // Show install button for supported platforms
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+        
+        // Show button if we have deferred prompt OR if we're on a supported platform
+        if (this.deferredPrompt || this.isPWASupported()) {
             installPrompt.classList.remove('hidden');
             
-            // Update button text based on platform
-            if (isIOS && isSafari) {
-                installBtn.textContent = '📱 Aggiungi alla Home';
-                installBtn.title = 'Aggiungi alla schermata Home';
-            } else {
+            // Update button text based on platform and availability
+            if (this.deferredPrompt) {
+                // Direct installation available
                 installBtn.textContent = '📱 Installa App';
-                installBtn.title = 'Installa l\'applicazione';
+                installBtn.title = 'Installa direttamente l\'applicazione';
+            } else if (isIOS && isSafari) {
+                // iOS Safari - manual installation
+                installBtn.textContent = '📱 Aggiungi alla Home';
+                installBtn.title = 'Mostra istruzioni per aggiungere alla schermata Home';
+            } else {
+                // Other browsers - show instructions
+                installBtn.textContent = '📱 Installa App';
+                installBtn.title = 'Mostra istruzioni per l\'installazione';
             }
         } else {
             installPrompt.classList.add('hidden');
@@ -1536,6 +1545,13 @@ class StockManager {
     // Reinstall app
     async reinstallApp() {
         try {
+            // Check if PWA installation is supported
+            if (!this.isPWASupported()) {
+                this.showPWANotSupportedMessage();
+                this.closePWAPanel();
+                return;
+            }
+            
             // First clear everything
             await this.clearAppCache();
             
@@ -1550,10 +1566,18 @@ class StockManager {
             this.showToast('🔄 Reinstallazione in corso...', 'info');
             this.closePWAPanel();
             
-            // Reload to trigger fresh installation
-            setTimeout(() => {
-                window.location.reload(true);
-            }, 2000);
+            // For browsers with direct installation support
+            if (this.deferredPrompt) {
+                // Try to trigger installation directly after cleanup
+                setTimeout(async () => {
+                    await this.triggerInstall();
+                }, 1500);
+            } else {
+                // For other platforms, reload and show instructions
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 2000);
+            }
             
         } catch (error) {
             console.error('Errore durante la reinstallazione:', error);
@@ -1563,18 +1587,28 @@ class StockManager {
 
     // Manual install trigger
     async triggerInstall() {
+        // Check if PWA installation is supported
+        if (!this.isPWASupported()) {
+            this.showPWANotSupportedMessage();
+            return;
+        }
+        
         // Check if app is already installed
         const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
                           window.navigator.standalone === true;
         
         if (isInstalled) {
-            this.showToast('✅ App già installata!', 'success');
+            // If already installed, trigger update/reinstall
+            this.showToast('🔄 Verifica aggiornamenti...', 'info');
+            await this.updateApp();
             return;
         }
         
+        // Direct installation attempt
         if (this.deferredPrompt) {
             try {
-                // Use the stored prompt for Chrome/Edge
+                // Use the stored prompt for Chrome/Edge - direct installation
+                this.showToast('📱 Avvio installazione...', 'info');
                 await this.deferredPrompt.prompt();
                 const { outcome } = await this.deferredPrompt.userChoice;
                 
@@ -1582,20 +1616,89 @@ class StockManager {
                     this.showToast('🎉 App installata con successo!', 'success');
                     const installPrompt = document.getElementById('installPrompt');
                     installPrompt.classList.add('hidden');
+                    this.showPWASettings();
                 } else {
-                    this.showToast('ℹ️ Installazione annullata', 'info');
+                    this.showToast('ℹ️ Installazione annullata dall\'utente', 'warning');
                 }
                 
                 this.deferredPrompt = null;
                 this.updateInstallButtonVisibility();
             } catch (error) {
                 console.error('Errore durante l\'installazione:', error);
+                this.showToast('❌ Errore durante l\'installazione', 'error');
                 this.showInstallInstructions();
             }
         } else {
             // For platforms without beforeinstallprompt (like iOS Safari)
+            // Show instructions immediately for manual installation
             this.showInstallInstructions();
         }
+    }
+    
+    // Check if PWA installation is supported on current device/browser
+    isPWASupported() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isAndroid = /android/i.test(navigator.userAgent);
+        const isDesktop = !(/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        
+        // Check for service worker support (essential for PWA)
+        if (!('serviceWorker' in navigator)) {
+            return false;
+        }
+        
+        // Check for manifest support
+        if (!window.navigator.standalone && !this.deferredPrompt && !isIOS) {
+            // If no standalone support, no deferred prompt, and not iOS, likely not supported
+            const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg');
+            const isFirefox = userAgent.includes('firefox');
+            const isEdge = userAgent.includes('edg');
+            const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+            
+            // Only supported browsers
+            if (!isChrome && !isFirefox && !isEdge && !isSafari) {
+                return false;
+            }
+        }
+        
+        // iOS Safari has limited PWA support but still works
+        if (isIOS && !userAgent.includes('safari')) {
+            return false; // iOS but not Safari
+        }
+        
+        return true;
+    }
+    
+    // Show message when PWA is not supported
+    showPWANotSupportedMessage() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        let message = '❌ PWA non supportata';
+        let details = '';
+        
+        if (!('serviceWorker' in navigator)) {
+            details = 'Il tuo browser non supporta i Service Workers, necessari per le Progressive Web App.\n\n';
+        }
+        
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !userAgent.includes('safari')) {
+            details += 'Su iOS, le PWA sono supportate solo in Safari.\n\n' +
+                      'Per installare l\'app:\n' +
+                      '1. Apri questa pagina in Safari\n' +
+                      '2. Tocca il pulsante Condividi\n' +
+                      '3. Seleziona "Aggiungi alla schermata Home"';
+        } else if (!userAgent.includes('chrome') && !userAgent.includes('firefox') && 
+                  !userAgent.includes('edg') && !userAgent.includes('safari')) {
+            details += 'Il tuo browser non supporta l\'installazione di PWA.\n\n' +
+                      'Browser supportati:\n' +
+                      '• Chrome\n' +
+                      '• Firefox\n' +
+                      '• Edge\n' +
+                      '• Safari';
+        } else {
+            details += 'L\'installazione PWA non è disponibile su questo dispositivo.\n\n' +
+                      'Puoi comunque utilizzare l\'app dal browser.';
+        }
+        
+        this.showInstallModal(message, details);
     }
 
     showInstallInstructions() {
